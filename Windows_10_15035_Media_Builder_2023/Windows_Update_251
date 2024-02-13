@@ -1,0 +1,5 @@
+###### Media Builder Update Info ######
+- Added some feedback to show what is happening when Apps are being added to the image.
+- Updated HWID activation ticket (Credit to massgrave.dev).
+- Cleanup.cmd and Build.cmd can no longer be run at the same time.
+- Added an option to disable startup checks for script and download list updates.

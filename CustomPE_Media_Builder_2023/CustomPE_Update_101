@@ -1,0 +1,4 @@
+###### Media Builder Update Info ######
+- CleanupPE.cmd and BuildPE.cmd can no longer be run at the same time.
+- Added an option to disable startup checks for script updates.
+- This update will cause any custom settings to be reset.

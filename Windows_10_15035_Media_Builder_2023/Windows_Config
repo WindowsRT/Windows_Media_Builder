@@ -1,0 +1,10 @@
+###### Media Builder Configuration ######
+MBMessage=
+MBMessageColour=green
+MBLatestVersion=252
+MBLatestTestVersion=252
+MBStartUpActions=True
+MBStartUpActionsMsg=
+MBStartUpActionsRun=
+MBStartUpActionsRunScript=True
+MBStartUpActionsExit=

@@ -1,0 +1,3 @@
+###### Media Builder Update Info ######
+- Cleanup.cmd and Build.cmd can no longer be run at the same time.
+- Added an option to disable startup checks for script and download list updates.

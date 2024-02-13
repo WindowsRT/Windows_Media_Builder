@@ -1,0 +1,140 @@
+If /i "%CleanupOnly%" == "True" goto SkipUpdateScript
+
+Set /a MBLatestVersion=!MBLatestVersion!
+Set /a MBLatestTestVersion=!MBLatestTestVersion!
+
+If "!WindowsListsURL!" == "" (
+	Set ListsURL=!OfficeListsURL!
+) else (
+	Set ListsURL=!WindowsListsURL!
+)
+
+If "!UseTestVersion!" == "True" (
+	Set MBUpdateVerStr=v%MBLatestTestVersion:~0,1%.%MBLatestTestVersion:~1,2%
+	Set MBUpdateVerNumber=!MBLatestTestVersion!
+) else (
+	Set MBUpdateVerStr=v%MBLatestVersion:~0,1%.%MBLatestVersion:~1,2%
+	Set MBUpdateVerNumber=!MBLatestVersion!
+)
+
+If not !MBUpdateVerNumber! GTR !MBVerNumber! (
+
+	If /i "!ForceUpdateArg!" == "True" (
+	cls
+	echo %white%%ul%________________________________________________________________________________________________________________________%ef%
+	echo.
+	echo %white%Checking for media builder updates.%ef%
+	echo Please wait.
+	echo.
+	echo 	Installed %MBName%: %white%%MBVer%%ef% %red%^(No Update Found^)%ef%
+	echo.
+	pause
+	)
+
+	goto SkipUpdateScript
+)
+
+Set MBUpdateInfoText=!TMP!\MB_Update_Info_!random!_!random!
+"%CD%\Bin\wget\%PROCESSOR_ARCHITECTURE%\wget.exe" -O "!MBUpdateInfoText!" "!ListsURL!_Update_!MBUpdateVerNumber!" -nc --timeout=2 --read-timeout=2 --tries=2 --no-check-certificate -q --show-progress --progress=bar:force:noscroll >nul 2>&1
+If "!ErrorLevel!" EQU "0" (
+	For /f "usebackq skip=1 tokens=*" %%a in ("!MBUpdateInfoText!") do (
+		Set MBUpdateInfoList=!MBUpdateInfoList!;"%%a"
+	)
+	Del "!MBUpdateInfoText!" /F /Q >nul 2>&1
+) else (
+	goto SkipUpdateScript
+)
+
+If exist "%CD%\UpgradeInfo.cmd" call "%CD%\UpgradeInfo.cmd"
+
+:UpdateScriptMenu
+cls
+echo %white%%ul%________________________________________________________________________________________________________________________%ef%
+echo.
+echo %white%Checking for media builder updates.%ef%
+echo Please wait.
+echo.
+echo An update for %MBName% is now available. 
+echo.
+echo 	Installed %MBName%: %white%%MBVer%%ef% %green%(Update Found: %MBUpdateVerStr%)%ef%
+rem echo Currently Installed - %MBVer%
+rem echo Update Available - %MBUpdateVerStr%
+echo.
+echo 	%white%Update Information:%ef%
+For %%a in (!MBUpdateInfoList!) do (
+	echo 	 %%~a
+)
+echo.
+Set MBUpdateConfirmPrompt=
+Set /p MBUpdateConfirmPrompt=Would you like to update media builder (Y/N)? 
+If /i "!MBUpdateConfirmPrompt!"=="Y" Set MBUpdateConfirm=True
+If /i "!MBUpdateConfirmPrompt!"=="N" Set MBUpdateConfirm=False
+If "%MBUpdateConfirm%" == "" goto UpdateScriptMenu
+echo %ul%________________________________________________________________________________________________________________________%ef%
+If "%MBUpdateConfirm%" == "False" (
+	cls
+	echo Please wait...
+	goto SkipUpdateScript
+)
+echo.
+
+Set MBUpdateZip=!TMP!\MB_Update_!MBUpdateVerNumber!_!random!_!random!.zip
+"%CD%\Bin\wget\%PROCESSOR_ARCHITECTURE%\wget.exe" -O "!MBUpdateZip!" "!ListsURL!_Update_!MBUpdateVerNumber!.zip" --timeout=2 --read-timeout=2 --tries=2  -nc --no-check-certificate -q --show-progress --progress=bar:force:noscroll
+If "!ErrorLevel!" EQU "0" (
+	echo.
+	Set MBUpdateInstall=!TMP!\MB_Update_!MBUpdateVerNumber!_Install_!random!_!random!.cmd
+	(
+		echo @echo off
+		echo @setlocal enableextensions
+		echo @setlocal EnableDelayedExpansion 
+		echo @cd /d "%%~dp0"
+		echo Set MediaBuilderPath=!CD!
+		echo Set MBUpdateZipPath=!MBUpdateZip!
+		echo Set MBUpdateTitle=!MBName! Update Script
+		echo @Title ^^!MBUpdateTitle^^!
+		echo.
+		echo echo Running ^^!MBUpdateTitle^^!.
+		echo echo Please wait...
+		echo timeout /t 10 /nobreak
+		echo "^!MediaBuilderPath^!\Bin\7z\%%PROCESSOR_ARCHITECTURE%%\7z.exe" x "^!MBUpdateZipPath^!" -aoa -o"^!MediaBuilderPath^!"
+		echo echo.
+		echo If "^!ErrorLevel^!" NEQ "0" ^(
+		echo 	echo Error: Unable to extract updates.
+		echo	echo.
+		echo 	pause
+		echo 	exit
+		echo ^) else ^(
+		echo 	echo Extracted updates successfully.
+		echo 	If exist "^!MediaBuilderPath^!\Config\Build_Config.cfg" del "^!MediaBuilderPath^!\Config\Build_Config.cfg" /f /q ^>nul 2^>^&1
+		echo ^)
+		echo echo.
+		echo echo Launching Media Builder, please wait...
+		echo timeout /t 4 /nobreak ^> nul
+		echo If exist "^!MediaBuilderPath^!\Build.cmd" Set LaunchMB=Build.cmd
+		echo If exist "^!MediaBuilderPath^!\BuildPE.cmd" Set LaunchMB=BuildPE.cmd
+		echo start /i "" powershell.exe Start-Process '^^!MediaBuilderPath^^!\^^!LaunchMB^^!' -Verb runas
+		echo If exist "^!MBUpdateZipPath^!" del "^!MBUpdateZipPath^!" /f /q ^>nul 2^>^&1
+		echo ^(goto^) 2^>nul ^& If exist "%%~f0" del "%%~f0" /f /q ^>nul 2^>^&1
+		echo exit
+	) > "!MBUpdateInstall!"
+	If exist "!MBUpdateInstall!" (
+		echo %white%Launching update script, please wait...%ef%
+		timeout /t 4 /nobreak > nul
+		start /i "" powershell.exe Start-Process '!MBUpdateInstall!' -Verb runas
+		Set MBScriptExit=True
+		goto SkipUpdateScript
+	) else (
+		echo %red%Error: Unable to launch update script.%ef%
+		echo.
+		pause
+		goto SkipUpdateScript
+	)
+) else (
+	echo %red%Error: Unable to download update.%ef%
+	echo %red%Wget Error: !ErrorLevel!%ef%
+	echo.
+	pause
+	goto SkipUpdateScript
+)
+
+:SkipUpdateScript
